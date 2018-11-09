@@ -17,6 +17,8 @@
 #include <math.h>
 #include <pwd.h>
 
+PID pid_ctrl;
+
 //map spec
 cv::Mat map;
 double res;
@@ -69,7 +71,7 @@ int main(int argc, char** argv){
 
     char* user = getpwuid(getuid())->pw_name;
     map = cv::imread((std::string("/home/") + std::string(user) +
-                      std::string("/catkin_ws/src/project3/src/ground_truth_map.pgm")).c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+                      std::string("/catkin_ws/src/project3/project3/src/ground_truth_map.pgm")).c_str(), CV_LOAD_IMAGE_GRAYSCALE);
 
     map_y_range = map.cols;
     map_x_range = map.rows;
@@ -229,6 +231,45 @@ int main(int argc, char** argv){
             } break;
 
             case RUNNING: {
+            printf("Running start \n");
+           // PID pid_ctrl;
+                while(ros::ok()){
+//          printf("Running PID \n");
+/*              printf("start while & i : %d\n",i);
+//              printf("look_ahead_idx %d",look_ahead_idx);
+//              printf(" path x , y , th %2f, %2f, %2f \n", path_RRT[i].x,path_RRT[i].y,path_RRT[i].th);*/
+//              printf("robot pose x, y, th %2f, %2f, %2f\n",robot_pose.x,robot_pose.y,robot_pose.th);
+                point path_now;
+                path_now.x = path_RRT[i].x;
+                path_now.y = path_RRT[i].y;
+                path_now.th = path_RRT[i].th;
+
+                float ctrl = pid_ctrl.get_control(robot_pose,path_now);
+                float speed= 0.9 + 1/fabs(ctrl)/5;
+                if(speed>1.5) speed=1.5;
+                float max_steering = (0.45/speed + 0.25 < 1.18)? 0.45/speed + 0.25 : 1.18;
+                float steering = ctrl*max_steering/3;
+//              printf("ctrl %f \n", steering);
+//              printf("error , error_sum , error_diff :  %.2f  %.2f  %.2f \n",pid_ctrl.error,pid_ctrl.error_diff,pid_ctrl.error_sum  );
+//              printf("path_RRT[i].x , y %.2f  %.2f \n ", path_RRT[i].x,path_RRT[i].y);
+                setcmdvel(speed,steering);
+                cmd_vel_pub.publish(cmd);
+                if(pow(path_RRT[i].x-robot_pose.x,2)+pow(path_RRT[i].y-robot_pose.y,2)<pow(0.2,2)) {
+                    i++;
+                }
+//              printf("look_ahead_idx %d\n",look_ahead_idx); 
+                if(pow(waypoints[look_ahead_idx].x-robot_pose.x,2)+pow(waypoints[look_ahead_idx].y-robot_pose.y,2)<pow(0.2,2)) look_ahead_idx++;
+                if(look_ahead_idx==waypoints.size())
+                {
+                    state=FINISH;
+                    break;
+                }
+                    ros::spinOnce();
+            control_rate.sleep();
+
+        }
+          
+
 	        //TODO
             } break;
 
@@ -250,6 +291,42 @@ int main(int argc, char** argv){
 void generate_path_RRT()
 {
     //TODO
+
+
+//      printf("RRT\n");
+        point lastp=waypoints[0];
+        for(int i=0; i<waypoints.size()-1; i++){
+//              printf("start %d\n",i);
+                lastp.x=waypoints[i].x;
+                lastp.y=waypoints[i].y;
+                rrtTree *tree = new rrtTree(lastp, waypoints[i+1], map, map_origin_x, map_origin_y, res, margin);
+//              printf("rrtTree %d\n",i);
+                tree->generateRRT(world_x_max, world_x_min, world_y_max, world_y_min, K, MaxStep);
+//              printf("generateRRT %d\n",i);
+                tree->visualizeTree();
+//              printf("tree.visualizeTree %d\n",i);
+                std::vector<traj> vec = tree->backtracking_traj();
+                lastp.x = vec.begin()->x;
+                lastp.y = vec.begin()->y;
+                lastp.th = vec.begin()->th;
+//              printf("backtracking_traj %d\n",i);
+                std::reverse(vec.begin(),vec.end());
+//              printf("reverse, begin, end %d\n",i);
+                tree->visualizeTree(vec);
+//              printf("visualizeTree %d\n",i);
+                for(int j=0; j<vec.size();j++)
+                        path_RRT.push_back(vec[j]);
+//              printf("path_RRT_insert %d\n",i); 
+//              printf("waypointssize %d\n",waypoints.size());
+                delete tree;
+        }
+        traj lastpoint;
+        lastpoint.x=waypoints[waypoints.size()].x;
+        lastpoint.y=waypoints[waypoints.size()].y;
+        lastpoint.th=waypoints[waypoints.size()].th;
+        path_RRT.push_back(lastpoint);
+
+
 }
 
 void set_waypoints()
