@@ -59,7 +59,7 @@ void setcmdvel(double v, double w);
 int main(int argc, char** argv){
     ros::init(argc, argv, "rrt_main");
     ros::NodeHandle n;
-
+    int i=0;
     // Initialize topics
     ros::Subscriber gazebo_pose_sub = n.subscribe("/gazebo/model_states",100,callback_state);
     ros::Publisher cmd_vel_pub = n.advertise<ackermann_msgs::AckermannDriveStamped>("/vesc/low_level/ackermann_cmd_mux/output",100);
