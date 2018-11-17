@@ -32,8 +32,8 @@ double world_y_min;
 double world_y_max;
 
 //parameters we should adjust : K, margin, MaxStep
-int margin = 5;
-int K = 7000;
+int margin = 6;
+int K = 2000;
 double MaxStep = 2;
 
 //way points
@@ -263,7 +263,7 @@ int main(int argc, char** argv){
 //              printf("path_RRT[i].x , y %.2f  %.2f \n ", path_RRT[i].x,path_RRT[i].y);
                 setcmdvel(speed,steering);
                 cmd_vel_pub.publish(cmd);
-                if(pow(path_RRT[i].x-robot_pose.x,2)+pow(path_RRT[i].y-robot_pose.y,2)<pow(0.2,2)) {
+                if(pow(path_RRT[i].x-robot_pose.x,2)+pow(path_RRT[i].y-robot_pose.y,2)<pow(0.23,2)) {
                     i++;
                 }
 //              printf("look_ahead_idx %d\n",look_ahead_idx); 
